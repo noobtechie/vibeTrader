@@ -106,3 +106,8 @@ export const automationApi = {
   confirmSignal: (signalId: string) => api.post(`/automation/signals/${signalId}/confirm`),
   rejectSignal: (signalId: string) => api.post(`/automation/signals/${signalId}/reject`),
 };
+
+// ─── Dashboard ─────────────────────────────────────────────────────────────────
+export const dashboardApi = {
+  get: () => api.get("/dashboard"),
+};

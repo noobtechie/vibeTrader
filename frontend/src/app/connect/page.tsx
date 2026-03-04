@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { brokerageApi, authApi } from "@/lib/api";
 import { AlertCircle, CheckCircle, ExternalLink, Plug, Unplug } from "lucide-react";
@@ -72,6 +73,7 @@ export default function ConnectPage() {
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: status, isLoading: statusLoading } = useQuery({
     queryKey: ["brokerage-status"],
@@ -106,6 +108,7 @@ export default function ConnectPage() {
     onSuccess: () => {
       toast.success(isLogin ? "Logged in!" : "Account created!");
       queryClient.invalidateQueries();
+      router.push("/");
     },
     onError: (err: unknown) => {
       const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
