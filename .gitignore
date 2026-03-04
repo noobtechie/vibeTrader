@@ -45,3 +45,6 @@ logs/
 
 # Alembic
 backend/alembic/versions/*.pyc
+
+# Celery
+backend/celerybeat-schedule
