@@ -30,8 +30,8 @@ class Trade(Base):
     exit_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     stop_loss: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     take_profit: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
-    entry_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
-    exit_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    entry_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    exit_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=TradeStatus.open.value)
     pnl: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     pnl_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
@@ -73,6 +73,6 @@ class Order(Base):
     placed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    filled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    filled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     trade: Mapped["Trade"] = relationship(back_populates="orders")
