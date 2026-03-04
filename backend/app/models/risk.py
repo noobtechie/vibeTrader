@@ -1,23 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import String, DateTime, Numeric, Boolean, ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-import enum
-
-
-class RiskEventType(str, enum.Enum):
-    limit_hit = "limit_hit"
-    circuit_break = "circuit_break"
-    warning = "warning"
-
-
-class LimitType(str, enum.Enum):
-    per_trade = "per_trade"
-    daily = "daily"
-    weekly = "weekly"
-    monthly = "monthly"
+from app.enums import RiskEventType, LimitType
 
 
 class RiskSettings(Base):
@@ -56,9 +43,13 @@ class RiskSettings(Base):
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="CAD")
     use_percentage: Mapped[bool] = mapped_column(Boolean, default=True)
     circuit_breaker_active: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     user: Mapped["User"] = relationship(back_populates="risk_settings")  # type: ignore[name-defined]
@@ -77,5 +68,7 @@ class RiskEvent(Base):
     limit_type: Mapped[str] = mapped_column(String(50), nullable=False)
     current_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     limit_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    triggered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    triggered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
     message: Mapped[str | None] = mapped_column(String(500), nullable=True)

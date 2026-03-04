@@ -1,8 +1,18 @@
 """Questrade API client implementing the BaseBroker interface."""
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
+from zoneinfo import ZoneInfo
 import httpx
+
+EASTERN = ZoneInfo("America/Toronto")
+
+
+def _to_eastern_iso(dt: datetime) -> str:
+    """Convert a naive (UTC-assumed) or aware datetime to Eastern time ISO string."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(EASTERN).isoformat()
 from app.brokerage.base import (
     BaseBroker, AccountInfo, Position, Balance, Quote,
     OptionChain, PlacedOrder, Candle, OrderSide, OrderType
@@ -144,14 +154,18 @@ class QuestradeClient(BaseBroker):
         return balances
 
     async def get_quotes(self, symbols: list[str]) -> list[Quote]:
-        # First resolve symbols to IDs
-        symbol_ids = []
-        for sym in symbols:
-            search_data = await self._request("GET", "symbols/search", params={"prefix": sym})
-            for result in search_data.get("symbols", []):
+        # Resolve symbols to IDs in parallel
+        import asyncio
+
+        async def resolve_symbol(sym: str) -> int | None:
+            data = await self._request("GET", "symbols/search", params={"prefix": sym})
+            for result in data.get("symbols", []):
                 if result["symbol"].upper() == sym.upper():
-                    symbol_ids.append(result["symbolId"])
-                    break
+                    return result["symbolId"]
+            return None
+
+        results = await asyncio.gather(*[resolve_symbol(s) for s in symbols])
+        symbol_ids = [sid for sid in results if sid is not None]
 
         if not symbol_ids:
             return []
@@ -228,8 +242,8 @@ class QuestradeClient(BaseBroker):
             "GET",
             f"markets/candles/{symbol_id}",
             params={
-                "startTime": start_time.isoformat() + "-05:00",
-                "endTime": end_time.isoformat() + "-05:00",
+                "startTime": _to_eastern_iso(start_time),
+                "endTime": _to_eastern_iso(end_time),
                 "interval": qt_interval,
             },
         )

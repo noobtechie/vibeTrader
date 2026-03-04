@@ -33,8 +33,9 @@ async def get_questrade_client(
             detail="No active Questrade connection found. Please connect your account.",
         )
 
-    # Refresh if token expired or near expiry (5 min buffer)
-    if connection.expires_at and connection.expires_at <= datetime.utcnow():
+    # Refresh if token expired or within 5 minutes of expiry
+    from datetime import timedelta
+    if connection.expires_at and connection.expires_at <= datetime.utcnow() + timedelta(minutes=5):
         connection = await refresh_questrade_token(db, connection)
         if not connection:
             raise HTTPException(
@@ -197,9 +198,9 @@ async def get_option_chain(
 @router.get("/candles/{symbol_id}")
 async def get_candles(
     symbol_id: int,
+    start_time: datetime,
+    end_time: datetime,
     client: Annotated[QuestradeClient, Depends(get_questrade_client)],
-    start_time: datetime = None,
-    end_time: datetime = None,
     interval: str = "1d",
 ):
     candles = await client.get_candles(symbol_id, start_time, end_time, interval)
@@ -228,6 +229,8 @@ class PlaceOrderRequest(BaseModel):
     order_type: str
     limit_price: Optional[Decimal] = None
     stop_price: Optional[Decimal] = None
+    # Risk fields: stop_loss_price is your max-loss exit, used to compute trade_risk
+    stop_loss_price: Optional[Decimal] = None
 
 
 @router.post("/orders")
@@ -237,13 +240,33 @@ async def place_order(
     db: Annotated[AsyncSession, Depends(get_db)],
     client: Annotated[QuestradeClient, Depends(get_questrade_client)],
 ):
-    """Place an order (risk checks are applied by the risk middleware)."""
+    """Place an order via Questrade with pre-trade risk validation."""
     from app.brokerage.base import OrderSide, OrderType
+    from app.risk.service import validate_pre_trade, RiskViolation
+
     try:
         side = OrderSide(request.side)
         order_type = OrderType(request.order_type)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # Compute dollar risk for this trade
+    trade_risk = Decimal("0")
+    if request.stop_loss_price and request.limit_price:
+        trade_risk = abs(request.limit_price - request.stop_loss_price) * request.quantity
+
+    # Fetch account equity for percentage-based limits
+    account_equity: Optional[Decimal] = None
+    try:
+        balances = await client.get_balances(request.account_id)
+        account_equity = sum((b.total_equity for b in balances), Decimal("0")) or None
+    except Exception:
+        pass  # Proceed with absolute limits if equity fetch fails
+
+    try:
+        await validate_pre_trade(db, current_user.id, trade_risk, account_equity)
+    except RiskViolation as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     placed = await client.place_order(
         account_id=request.account_id,

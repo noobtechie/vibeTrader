@@ -3,24 +3,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, AsyncIterator
-import enum
+from typing import Optional
 
-
-class OrderSide(str, enum.Enum):
-    buy = "buy"
-    sell = "sell"
-    buy_to_open = "buy_to_open"
-    sell_to_open = "sell_to_open"
-    buy_to_close = "buy_to_close"
-    sell_to_close = "sell_to_close"
-
-
-class OrderType(str, enum.Enum):
-    market = "market"
-    limit = "limit"
-    stop = "stop"
-    stop_limit = "stop_limit"
+# Re-export from canonical enums module
+from app.enums import OrderSide, OrderType  # noqa: F401
 
 
 @dataclass

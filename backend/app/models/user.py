@@ -1,15 +1,10 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime, Boolean, Text, Enum as SAEnum, Uuid, ForeignKey
+from typing import Optional
+from sqlalchemy import String, DateTime, Boolean, Text, Uuid, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-import enum
-
-
-class BrokerType(str, enum.Enum):
-    questrade = "questrade"
-    interactive_brokers = "interactive_brokers"
-    alpaca = "alpaca"
+from app.enums import BrokerType
 
 
 class User(Base):
@@ -30,8 +25,8 @@ class User(Base):
     brokerage_connections: Mapped[list["BrokerageConnection"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    risk_settings: Mapped[list["RiskSettings"]] = relationship(  # type: ignore[name-defined]
-        back_populates="user", cascade="all, delete-orphan"
+    risk_settings: Mapped[Optional["RiskSettings"]] = relationship(  # type: ignore[name-defined]
+        back_populates="user", cascade="all, delete-orphan", uselist=False
     )
     playbooks: Mapped[list["Playbook"]] = relationship(  # type: ignore[name-defined]
         back_populates="user", cascade="all, delete-orphan"

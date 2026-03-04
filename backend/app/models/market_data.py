@@ -1,17 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import String, DateTime, Numeric, BigInteger, JSON, ForeignKey, Boolean, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
-import enum
-
-
-class DataSourceType(str, enum.Enum):
-    questrade = "questrade"
-    polygon = "polygon"
-    alpha_vantage = "alpha_vantage"
-    yahoo_finance = "yahoo_finance"
+from app.enums import DataSourceType
 
 
 class Candle(Base):
@@ -46,4 +39,6 @@ class DataSourceConfig(Base):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )

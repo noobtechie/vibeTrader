@@ -39,6 +39,7 @@ from app.journal.router import router as journal_router
 from app.backtesting.router import router as backtesting_router
 from app.automation.router import router as automation_router
 from app.data_sources.router import router as data_sources_router
+from app.dashboard.router import router as dashboard_router
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(brokerage_router, prefix="/api/v1")
@@ -48,6 +49,7 @@ app.include_router(journal_router, prefix="/api/v1")
 app.include_router(backtesting_router, prefix="/api/v1")
 app.include_router(automation_router, prefix="/api/v1")
 app.include_router(data_sources_router, prefix="/api/v1")
+app.include_router(dashboard_router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")
@@ -62,30 +64,43 @@ from app.auth.service import decode_token
 
 
 @app.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = ""):
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
     """
     WebSocket endpoint for real-time updates.
-    Connect with: ws://host/ws/{user_id}?token=<jwt>
+    Auth flow: accept connection, await first JSON message {"type":"auth","token":"<jwt>"},
+    validate, then start streaming. Token is NOT passed in the URL to prevent log exposure.
     """
-    # Validate token
-    if not token:
-        await websocket.close(code=4001, reason="Missing token")
-        return
+    await websocket.accept()
+
     try:
+        # Wait up to 10 seconds for the auth message
+        import asyncio
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+    except asyncio.TimeoutError:
+        await websocket.close(code=4001, reason="Auth timeout")
+        return
+
+    import json
+    try:
+        msg = json.loads(raw)
+        if msg.get("type") != "auth":
+            await websocket.close(code=4001, reason="Expected auth message")
+            return
+        token = msg.get("token", "")
         payload = decode_token(token)
         token_user_id = payload.get("sub")
         if token_user_id != user_id:
             await websocket.close(code=4003, reason="Forbidden")
             return
-    except JWTError:
-        await websocket.close(code=4001, reason="Invalid token")
+    except (JWTError, json.JSONDecodeError, Exception):
+        await websocket.close(code=4001, reason="Invalid auth")
         return
 
-    await ws_manager.connect(websocket, user_id)
+    # Auth succeeded — hand off to manager (which sends CONNECTED event)
+    await ws_manager.connect_authenticated(websocket, user_id)
     try:
         while True:
-            # Keep connection alive; handle client messages
-            data = await websocket.receive_text()
-            # Client can send heartbeat or subscribe messages
+            # Heartbeat / subscribe messages from client
+            await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket, user_id)

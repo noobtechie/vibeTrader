@@ -1,5 +1,4 @@
 """Questrade OAuth2 token management with encrypted storage."""
-import base64
 from datetime import datetime, timedelta
 from typing import Optional
 import uuid
@@ -12,8 +11,19 @@ from app.models.user import BrokerageConnection, BrokerType
 
 
 def _get_fernet() -> Fernet:
-    """Get Fernet instance for symmetric encryption of tokens."""
-    key = base64.urlsafe_b64encode(settings.encryption_key.encode()[:32].ljust(32, b"="))
+    """
+    Get Fernet instance. Fernet requires a URL-safe base64-encoded 32-byte key.
+    The encryption_key setting must be exactly 32 ASCII characters; it is used
+    directly as the 32-byte secret, then base64-encoded to produce a valid key.
+    """
+    raw = settings.encryption_key.encode("ascii")
+    if len(raw) != 32:
+        raise ValueError(
+            f"ENCRYPTION_KEY must be exactly 32 ASCII characters, got {len(raw)}. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(24)[:32])\""
+        )
+    import base64
+    key = base64.urlsafe_b64encode(raw)
     return Fernet(key)
 
 
@@ -47,10 +57,10 @@ async def store_tokens(
     expires_in: int,
 ) -> BrokerageConnection:
     """Store encrypted tokens in the database."""
-    # Deactivate any existing connections
     existing = await get_active_connection(db, user_id)
     if existing:
         existing.is_active = False
+        await db.flush()
 
     connection = BrokerageConnection(
         user_id=user_id,
@@ -92,7 +102,6 @@ async def refresh_questrade_token(
         except (httpx.HTTPError, KeyError):
             return None
 
-    # Update tokens
     connection.access_token_encrypted = encrypt_token(data["access_token"])
     connection.refresh_token_encrypted = encrypt_token(data["refresh_token"])
     connection.api_server = data["api_server"].rstrip("/")

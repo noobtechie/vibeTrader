@@ -1,7 +1,7 @@
 """WebSocket event type definitions."""
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 
@@ -39,5 +39,5 @@ class EventType(str, Enum):
 class WSEvent(BaseModel):
     type: EventType
     data: Any
-    timestamp: datetime = datetime.utcnow()
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
     user_id: str | None = None

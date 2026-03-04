@@ -1,15 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import String, DateTime, Boolean, Text, JSON, ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-import enum
-
-
-class AutomationMode(str, enum.Enum):
-    disabled = "disabled"
-    semi_auto = "semi_auto"
-    full_auto = "full_auto"
+from app.enums import AutomationMode
 
 
 class Playbook(Base):
@@ -38,9 +32,13 @@ class Playbook(Base):
     ideas: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     user: Mapped["User"] = relationship(back_populates="playbooks")  # type: ignore[name-defined]
@@ -67,9 +65,13 @@ class Strategy(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     watchlist: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     playbook: Mapped["Playbook"] = relationship(back_populates="strategies")

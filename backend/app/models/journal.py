@@ -1,12 +1,16 @@
 import uuid
-from datetime import datetime, date
-from sqlalchemy import String, DateTime, Date, Text, JSON, ForeignKey, Integer, Boolean, Uuid
+from datetime import datetime, date, timezone
+from sqlalchemy import String, DateTime, Date, Text, JSON, ForeignKey, Integer, Boolean, Uuid, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class JournalEntry(Base):
     __tablename__ = "journal_entries"
+    __table_args__ = (
+        # One journal entry per trade (NULLs are exempt from uniqueness in SQL)
+        UniqueConstraint("trade_id", name="uq_journal_entries_trade_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -35,9 +39,13 @@ class JournalEntry(Base):
     followed_playbook: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     lessons_learned: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     user: Mapped["User"] = relationship(back_populates="journal_entries")  # type: ignore[name-defined]

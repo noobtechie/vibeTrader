@@ -11,7 +11,7 @@ class TradingWebSocket {
   connect(userId: string, token: string) {
     this.userId = userId;
     const wsBase = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
-    const url = `${wsBase}/ws/${userId}?token=${token}`;
+    const url = `${wsBase}/ws/${userId}`;
 
     this.ws = new WebSocket(url);
 
@@ -21,6 +21,8 @@ class TradingWebSocket {
         clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
       }
+      // Send auth as first message (token never travels in URL)
+      this.ws?.send(JSON.stringify({ type: "auth", token }));
     };
 
     this.ws.onmessage = (event) => {

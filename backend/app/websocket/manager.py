@@ -36,7 +36,12 @@ class ConnectionManager:
             await self._redis.aclose()
 
     async def connect(self, websocket: WebSocket, user_id: str):
+        """Accept and register a new WebSocket connection."""
         await websocket.accept()
+        await self.connect_authenticated(websocket, user_id)
+
+    async def connect_authenticated(self, websocket: WebSocket, user_id: str):
+        """Register an already-accepted WebSocket connection."""
         if user_id not in self._connections:
             self._connections[user_id] = []
         self._connections[user_id].append(websocket)

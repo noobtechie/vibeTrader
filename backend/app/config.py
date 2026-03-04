@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24  # 24 hours
 
     # Encryption (for brokerage tokens)
-    encryption_key: str = "dev-encryption-key-32-chars-long!!"
+    encryption_key: str = "dev-secret-encrypt-key-123456789"
 
     # Environment
     environment: str = "development"
