@@ -58,13 +58,12 @@ async def run_async_migrations() -> None:
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
 
-    # create_hypertable also requires AUTOCOMMIT and must run after the tables exist
+    # create_hypertable requires AUTOCOMMIT and must run after the tables exist.
+    # Only candles qualifies: its PK already includes the time column.
+    # risk_events has id-only PK so cannot be partitioned by triggered_at.
     async with connectable.execution_options(isolation_level="AUTOCOMMIT").connect() as conn:
         await conn.execute(text(
             "SELECT create_hypertable('candles', 'time', if_not_exists => TRUE);"
-        ))
-        await conn.execute(text(
-            "SELECT create_hypertable('risk_events', 'triggered_at', if_not_exists => TRUE);"
         ))
 
     await connectable.dispose()
