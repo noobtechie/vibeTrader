@@ -108,7 +108,15 @@ export default function ConnectPage() {
       queryClient.invalidateQueries();
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Auth failed";
+      const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+      let msg: string;
+      if (typeof detail === "string") {
+        msg = detail;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        msg = (detail[0] as { msg?: string })?.msg || "Auth failed";
+      } else {
+        msg = "Auth failed";
+      }
       toast.error(msg);
     },
   });

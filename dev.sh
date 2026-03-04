@@ -102,7 +102,7 @@ async def seed():
     async with Session() as db:
         # Check if demo user already exists
         from sqlalchemy import select
-        existing = await db.execute(select(User).where(User.email == "demo@trading.local"))
+        existing = await db.execute(select(User).where(User.email == "demo@example.com"))
         if existing.scalar_one_or_none():
             print("Demo data already exists — skipping seed.")
             return
@@ -111,7 +111,7 @@ async def seed():
 
         # ── Demo user ─────────────────────────────────────────────────────────
         user = User(
-            email="demo@trading.local",
+            email="demo@example.com",
             password_hash=hash_password("Demo1234!"),
         )
         db.add(user)
@@ -277,7 +277,7 @@ echo -e "  ${CYAN}Frontend${RESET}      http://localhost:3000"
 echo -e "  ${CYAN}API docs${RESET}      http://localhost:8000/docs"
 echo ""
 echo -e "  ${CYAN}Demo login${RESET}"
-echo -e "    Email:    demo@trading.local"
+echo -e "    Email:    demo@example.com"
 echo -e "    Password: Demo1234!"
 echo ""
 echo -e "  ${CYAN}Demo data includes:${RESET}"
