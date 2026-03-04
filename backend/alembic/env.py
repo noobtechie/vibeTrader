@@ -51,12 +51,22 @@ async def run_async_migrations() -> None:
     )
 
     # TimescaleDB's CREATE EXTENSION must run outside a transaction (requires AUTOCOMMIT).
-    # We do it here once before handing off to the transactional migration runner.
     async with connectable.execution_options(isolation_level="AUTOCOMMIT").connect() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"))
 
+    # Run the transactional migrations (creates all tables)
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
+
+    # create_hypertable also requires AUTOCOMMIT and must run after the tables exist
+    async with connectable.execution_options(isolation_level="AUTOCOMMIT").connect() as conn:
+        await conn.execute(text(
+            "SELECT create_hypertable('candles', 'time', if_not_exists => TRUE);"
+        ))
+        await conn.execute(text(
+            "SELECT create_hypertable('risk_events', 'triggered_at', if_not_exists => TRUE);"
+        ))
+
     await connectable.dispose()
 
 

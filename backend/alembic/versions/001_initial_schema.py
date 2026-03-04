@@ -186,7 +186,7 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("event_type", sa.Enum("limit_hit", "circuit_break", "warning", name="riskeventtype"), nullable=False),
-        sa.Column("limit_type", sa.Enum("per_trade", "daily", "weekly", "monthly", name="limittype"), nullable=False),
+        sa.Column("limit_type", sa.Enum("per_trade", "daily", "weekly", "monthly", "circuit_breaker", name="limittype"), nullable=False),
         sa.Column("current_value", sa.Numeric(12, 2), nullable=False),
         sa.Column("limit_value", sa.Numeric(12, 2), nullable=False),
         sa.Column("triggered_at", sa.DateTime(), nullable=False),
@@ -225,12 +225,8 @@ def upgrade() -> None:
     )
     op.create_index("ix_data_source_configs_user_id", "data_source_configs", ["user_id"])
 
-    # Create hypertables (will silently fail if TimescaleDB not available)
-    try:
-        op.execute("SELECT create_hypertable('candles', 'time', if_not_exists => TRUE);")
-        op.execute("SELECT create_hypertable('risk_events', 'triggered_at', if_not_exists => TRUE);")
-    except Exception:
-        pass
+    # Hypertable creation is handled in alembic/env.py after migrations run
+    # (requires AUTOCOMMIT mode which cannot be used inside an Alembic migration transaction)
 
 
 def downgrade() -> None:
