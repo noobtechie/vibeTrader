@@ -17,9 +17,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Enable TimescaleDB if available
-    op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;")
-
     # Users table
     op.create_table(
         "users",

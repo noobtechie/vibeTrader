@@ -1,6 +1,6 @@
 import asyncio
 from logging.config import fileConfig
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
@@ -49,6 +49,12 @@ async def run_async_migrations() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+
+    # TimescaleDB's CREATE EXTENSION must run outside a transaction (requires AUTOCOMMIT).
+    # We do it here once before handing off to the transactional migration runner.
+    async with connectable.execution_options(isolation_level="AUTOCOMMIT").connect() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"))
+
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
