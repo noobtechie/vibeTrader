@@ -23,12 +23,8 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-def get_url():
-    return settings.sync_database_url
-
-
 def run_migrations_offline() -> None:
-    url = get_url()
+    url = settings.sync_database_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -47,7 +43,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     cfg = config.get_section(config.config_ini_section, {})
-    cfg["sqlalchemy.url"] = get_url()
+    cfg["sqlalchemy.url"] = settings.database_url  # asyncpg driver required here
     connectable = async_engine_from_config(
         cfg,
         prefix="sqlalchemy.",
